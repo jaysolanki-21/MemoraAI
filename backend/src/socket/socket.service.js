@@ -3,7 +3,9 @@ const {Server} = require("socket.io");
 const cookie = require("cookie");
 const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
-const generateResponse = require("../services/ai.service")
+const {generateResponse} = require("../services/ai.service");
+const { Chat } = require("@google/genai");
+const message = require("../models/message.model");
 
 function setupSocket(httpServer) {
     const io = new Server(httpServer);
@@ -35,10 +37,34 @@ function setupSocket(httpServer) {
         console.log("New socket connection:", socket.id);
 
         socket.on("ai-message", async (messagePayload) => {
-            console.log("Received AI message:", messagePayload);
 
-            const response = await generateResponse(messagePayload.content);
-            socket.emit("ai-response", response);
+            const newMessage = new message({
+                content: messagePayload.content,
+                chatId: messagePayload.chat,
+                userId: socket.user._id,
+                role: "user"
+            });
+            await newMessage.save();
+
+            const chatHistory = await message.find({ chatId: messagePayload.chat }).sort({ createdAt: 1 });
+            const formattedHistory = chatHistory.map(msg =>{
+                return { role: msg.role, parts: [{ text: msg.content }] };
+            } );
+
+            const response = await generateResponse(formattedHistory);
+
+            const newMessagebyai = new message({
+                content: response,
+                chatId: messagePayload.chat,
+                userId: socket.user._id,
+                role: "model"
+            });
+            await newMessagebyai.save();
+
+            socket.emit('ai-response', {
+                content : response,
+                chat : messagePayload.chat
+            })
         });
 
     });
