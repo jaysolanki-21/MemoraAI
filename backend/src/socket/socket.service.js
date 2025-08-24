@@ -1,11 +1,14 @@
-const { json } = require("express");
+const { json, text } = require("express");
 const {Server} = require("socket.io");
 const cookie = require("cookie");
 const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
-const {generateResponse} = require("../services/ai.service");
+const {generateResponse, generateVector} = require("../services/ai.service");
 const { Chat } = require("@google/genai");
 const message = require("../models/message.model");
+const { queryMemory, createMemory } = require("../services/vector.service");
+const uuid = require("uuid");
+const { chat } = require("@pinecone-database/pinecone/dist/assistant/data/chat");
 
 function setupSocket(httpServer) {
     const io = new Server(httpServer);
@@ -46,6 +49,12 @@ function setupSocket(httpServer) {
             });
             await newMessage.save();
 
+            const vector = await generateVector(messagePayload.content);
+
+            await createMemory({ messageId: uuid.v4(), vector, metadata: { chatId: messagePayload.chat, userId: socket.user._id, text: messagePayload.content } });
+
+            // const similarMemories = await queryMemory({ queryVector: vector, limit: 1, metadata: {} });
+
             const chatHistory = await message.find({ chatId: messagePayload.chat }).sort({ createdAt: 1 });
             const formattedHistory = chatHistory.map(msg =>{
                 return { role: msg.role, parts: [{ text: msg.content }] };
@@ -60,6 +69,10 @@ function setupSocket(httpServer) {
                 role: "model"
             });
             await newMessagebyai.save();
+
+            const responseVector = await generateVector(response);
+
+            await createMemory({ messageId: uuid.v4(), vector: responseVector, metadata: { chatId: messagePayload.chat, userId: socket.user._id, text: response } });
 
             socket.emit('ai-response', {
                 content : response,
