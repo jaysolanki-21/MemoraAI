@@ -37,71 +37,85 @@ function setupSocket(httpServer) {
     });
 
     io.on("connection", (socket) => {
-        console.log("New socket connection:", socket.id);
+  console.log("New socket connection:", socket.id);
 
-        socket.on("ai-message", async (messagePayload) => {
+  socket.on("ai-message", async (messagePayload) => {
+   
+    const [newMessage, vector] = await Promise.all([
+      message.create({
+        content: messagePayload.content,
+        chatId: messagePayload.chat,
+        userId: socket.user._id,
+        role: "user"
+      }),
+      generateVector(messagePayload.content)
+    ]);
 
-            const newMessage = new message({
-                content: messagePayload.content,
-                chatId: messagePayload.chat,
-                userId: socket.user._id,
-                role: "user"
-            });
-            await newMessage.save();
-
-            const vector = await generateVector(messagePayload.content);
-
-            const memory = await queryMemory(vector, 5, {
-                userId: socket.user._id,
-            });
-
-            await createMemory({ messageId: uuid.v4(), vector, metadata: { chatId: messagePayload.chat, userId: socket.user._id, text: messagePayload.content } });
-
-
-
-
-            const chatHistory = await message.find({ chatId: messagePayload.chat })
-                .sort({ createdAt: -1 })
-                .limit(20)
-                .lean();
-
-            chatHistory.reverse();
-
-            const stm = chatHistory.map(msg => {
-                return { role: msg.role, parts: [{ text: msg.content }] };
-            });
-
-            const ltm = [{
-                role: "user", parts: [{
-                    text: `this are some previous messages from chat ,use them to generate respond
-                    ${memory.map(item => item.metadata.text).join("\n")}
-                    ` }]
-            }];
-
-            console.log(ltm[0]);
-            console.log(stm);
-
-            const response = await generateResponse([...ltm, ...stm]);
-
-            const newMessagebyai = new message({
-                content: response,
-                chatId: messagePayload.chat,
-                userId: socket.user._id,
-                role: "model"
-            });
-            await newMessagebyai.save();
-
-            const responseVector = await generateVector(response);
-
-            await createMemory({ messageId: uuid.v4(), vector: responseVector, metadata: { chatId: messagePayload.chat, userId: socket.user._id, text: response } });
-
-            socket.emit('ai-response', {
-                content: response,
-                chat: messagePayload.chat
-            })
-        });
-
+    await createMemory({
+      messageId: uuid.v4(),
+      vector,
+      metadata: {
+        chatId: messagePayload.chat,
+        userId: socket.user._id,
+        text: messagePayload.content
+      }
     });
+
+    const [chatHistory,memory] = await Promise.all([
+      message.find({ chatId: messagePayload.chat })
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean(),
+      queryMemory({
+        queryVector: vector,
+        limit: 5,
+        metadata: { userId: socket.user._id }
+      })
+    ]);
+
+    chatHistory.reverse();
+
+    const stm = chatHistory.map(item => ({
+      role: item.role,
+      parts: [{ text: item.content }]
+    }));
+
+    const ltm = [{
+      role: "user",
+      parts: [{
+        text: `Here are some relevant past messages, use them for context:\n${memory.map(item => item.metadata.text).join("\n")}`
+      }]
+    }];
+
+    // Generate AI response
+    const response = await generateResponse([...ltm, ...stm]);
+
+    const [newMessagebyai,responseVector] = await Promise.all([
+      message.create({
+        content: response,
+        chatId: messagePayload.chat,
+        userId: socket.user._id,
+        role: "model"
+      }),
+      generateVector(response)
+    ]);
+
+    await createMemory({
+      messageId: uuid.v4(),
+      vector: responseVector,
+      metadata: {
+        chatId: messagePayload.chat,
+        userId: socket.user._id,
+        text: response
+      }
+    });
+
+    socket.emit("ai-response", {
+      content: response,
+      chat: messagePayload.chat
+    });
+  });
+});
 }
 
 module.exports = {
