@@ -16,8 +16,7 @@ exports.createChat = async (req, res) => {
 
 exports.getChats = async (req, res) => {
     const user = req.user;
-
-    const chats = await chatModel.find({ user: user._id });
+    const chats = await chatModel.find({ userId: user._id }).sort({ lastActivity: -1 });
 
     res.status(200).json({
         message: "Chats retrieved successfully",
@@ -34,7 +33,7 @@ exports.getMessages = async (req, res) => {
 
     const chatId = req.params.id;
 
-    const messages = await messageModel.find({ chat: chatId }).sort({ createdAt: 1 });
+    const messages = await messageModel.find({ chatId }).sort({ createdAt: 1 });
 
     res.status(200).json({
         message: "Messages retrieved successfully",

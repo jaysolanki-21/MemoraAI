@@ -11,11 +11,17 @@ const uuid = require("uuid");
 const { chat } = require("@pinecone-database/pinecone/dist/assistant/data/chat");
 
 function setupSocket(httpServer) {
-    const io = new Server(httpServer);
+    const io = new Server(httpServer,{
+        cors: {
+            origin: "http://localhost:5173",
+            methods: ["GET", "POST"],
+            credentials: true
+        }
+    });
 
     io.use(async (socket, next) => {
         const cookies = cookie.parse(socket.handshake.headers.cookie || "");
-
+      
         if (!cookies.token) {
             return next(new Error("Authentication error"));
         }
