@@ -13,7 +13,7 @@ const { chat } = require("@pinecone-database/pinecone/dist/assistant/data/chat")
 function setupSocket(httpServer) {
     const io = new Server(httpServer,{
         cors: {
-            origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+            origin: 'https://memora-ai.netlify.app' || 'http://localhost:5173',
             methods: ["GET", "POST"],
             credentials: true
         }
