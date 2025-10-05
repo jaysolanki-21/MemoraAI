@@ -18,12 +18,11 @@ const Register = () => {
         setSubmitting(true);
         console.log(form);
 
+
         axios.post("http://localhost:3000/api/auth/register", {
+            
+            name: form.firstname + " " + form.lastname,
             email: form.email,
-            fullName: {
-                firstName: form.firstname,
-                lastName: form.lastname
-            },
             password: form.password
         }, {
             withCredentials: true
