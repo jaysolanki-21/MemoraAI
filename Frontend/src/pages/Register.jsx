@@ -20,7 +20,7 @@ const Register = () => {
 
 
         // axios.post("http://localhost:3000/api/auth/register", {
-        axios.post("https://memoraai-doqi.onrender.com/api/auth/register", {
+        axios.post("https://memoraai-wxwf.onrender.com/api/auth/register", {
             name: form.firstname + " " + form.lastname,
             email: form.email,
             password: form.password

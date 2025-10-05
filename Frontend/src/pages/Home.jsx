@@ -32,7 +32,7 @@ const Home = () => {
     if (!title) return;
 
     // const response = await axios.post("http://localhost:3000/api/chat", { title }, { withCredentials: true });
-    const response = await axios.post("https://memoraai-doqi.onrender.com/api/chat", { title }, { withCredentials: true }); 
+    const response = await axios.post("https://memoraai-wxwf.onrender.com/api/chat", { title }, { withCredentials: true }); 
     getMessages(response.data.chat._id);
     dispatch(startNewChat(response.data.chat));
     setSidebarOpen(false);
@@ -40,14 +40,14 @@ const Home = () => {
 
   useEffect(() => {
     // axios.get("http://localhost:3000/api/chat", { withCredentials: true })
-    axios.get("https://memoraai-doqi.onrender.com/api/chat", { withCredentials: true })
+    axios.get("https://memoraai-wxwf.onrender.com/api/chat", { withCredentials: true })
       .then(response => {
         dispatch(setChats(response.data.chats.reverse()));
       });
 
     // const tempSocket = io("http://localhost:3000", { withCredentials: true });
 
-    const tempSocket = io("https://memoraai-doqi.onrender.com/", {
+    const tempSocket = io("https://memoraai-wxwf.onrender.com/", {
       withCredentials: true
     });
 
@@ -74,7 +74,7 @@ const Home = () => {
 
   const getMessages = async (chatId) => {
     // const response = await axios.get(`http://localhost:3000/api/chat/messages/${chatId}`, { withCredentials: true });
-    const response = await axios.get(`https://memoraai-doqi.onrender.com/api/chat/messages/${chatId}`, { withCredentials: true });
+    const response = await axios.get(`https://memoraai-wxwf.onrender.com/api/chat/messages/${chatId}`, { withCredentials: true });
     setMessages(response.data.messages.map(m => ({
       type: m.role === 'user' ? 'user' : 'ai',
       content: m.content
